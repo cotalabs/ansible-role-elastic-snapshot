@@ -1,0 +1,6 @@
+# an error handling script for jobber (cron alternative)
+# wal-e backup-push failed
+
+curl -X POST --data-urlencode \
+    'payload={"text": "*ElasticsearchSweep Bites The Dust...Du Du Du...*\n\t{{ env }}: database backup failed"}' \
+    https://hooks.slack.com/services/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

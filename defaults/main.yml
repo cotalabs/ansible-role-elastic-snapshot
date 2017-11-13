@@ -1,0 +1,40 @@
+# general config
+elastic_hosts:
+  - localhost
+elastic_port: 9200
+connection_timeout: 30
+ssl_no_validate: False
+use_ssl: False
+loglevel: INFO
+master_only: False
+curator_user: ubuntu
+curator_user_home: /home/ubuntu
+
+curator_default_config_file_name: curator.yml
+curator_default_directory: "{{ curator_user_home }}/.curator"
+curator_default_config_path: "{{ curator_default_directory }}/{{ curator_default_config_file_name }}"
+
+# curator beat config
+beat_repository_name: beat_snapshot_repo
+delete_beat_indices_unit: weeks
+delete_beat_indices_unit_count: 2
+close_beat_indices_unit: weeks
+close_beat_indices_unit_count: 1
+snap_beat_indices_unit: days
+snap_beat_indices_unit_count: 1
+
+# elasticsearch s3_repositories config
+s3_repository_names:
+  - "{{ beat_repository_name }}"
+  - document_snapshot
+snapshot_bucket: "{{ env }}-elasticsearch-backup.oncota.com"
+server_side_encryption: true
+compress: true
+storage_class: standard_ia
+
+# jobber
+jobber_filename: .jobber
+jobber_directory_path: "{{ curator_user_home }}"
+jobber_job_file_path: "{{ jobber_directory_path }}/{{ jobber_filename }}"
+jobber_error_handler_filename: jobber_error_handler.sh
+jobber_error_handler_file_path: "{{ jobber_directory_path }}/{{ jobber_error_handler_filename }}"

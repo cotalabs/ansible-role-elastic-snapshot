@@ -1,0 +1,11 @@
+[prefs]
+  notifyProgram: {{ jobber_error_handler_file_path }}
+
+[jobs]
+- name: ElasticSweep
+  cmd: |
+    curator {{ curator_default_directory }}/snapshot_beat_indices.yml && curator {{ curator_default_directory }}/close_beat_indices.yml && curator {{ curator_default_directory }}/delete_beat_indices.yml && curl -X POST --data-urlencode 'payload={"text": "*Radio GaGa*\n\tenv: {{ env }}\n\taction: `ElasticSweep`\n\tstate: `success`"}' https://hooks.slack.com/services/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
+  time: 0 0 8 * * *
+  onError: Stop
+  notifyOnError: true
+  notifyOnFailure: true

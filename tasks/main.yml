@@ -1,0 +1,99 @@
+---
+- name: install dependency
+  apt:
+    state: present
+    name: curl
+
+- name: add elastic.co public signing key to apt deb repository
+  apt_key:
+    url: https://packages.elastic.co/GPG-KEY-elasticsearch
+    state: present
+
+- name: add curator source to apt default sources.list
+  lineinfile:
+    path: /etc/apt/sources.list.d/curator.list
+    create: yes
+    state: present
+    line: deb [arch=amd64] https://packages.elastic.co/curator/5/debian9 stable main
+    regexp: '^deb \[arch=amd64\] https\://packages\.elastic\.co/curator/5/debian9 stable main$'
+
+- name: apt install elastic curator
+  apt:
+    update_cache: yes
+    state: present
+    name: elasticsearch-curator
+
+- name: create curator holding directory
+  file:
+    path: "{{ curator_default_directory }}"
+    state: directory
+    mode: "u=rwx,g=,o="
+    owner: "{{ curator_user }}"
+    group: "{{ curator_user }}"
+
+- name: copy over create curator config file
+  template:
+    src: templates/curator.j2
+    dest: "{{ curator_default_config_path }}"
+    owner: "{{ curator_user }}"
+    group: "{{ curator_user }}"
+
+- name: check is curator install correctly
+  shell: curator_cli show_indices
+  register: indices
+
+- name: check is curator install correctly
+  fail:
+    msg: curator did not install correctly
+  when: indices.stdout == ""
+
+- name: create elasticsearch aws s3 snapshot repository [idempotent on elasticsearch end]
+  shell: |
+    curl -XPUT 'http://{{ item[0] }}:9200/_snapshot/{{ item[1] }}?verify=true' -H 'Content-Type: application/json' -d'{
+      "type": "s3",
+      "settings": {
+        "bucket": "{{ snapshot_bucket }}",
+        "server_side_encryption": {{ server_side_encryption|lower }},
+        "compress": {{ compress|lower }},
+        "storage_class": "{{ storage_class }}"
+      }
+    }'
+  with_nested:
+    - "{{ elastic_hosts }}"
+    - "{{ s3_repository_names }}"
+
+- name: copy over curator beat action files
+  template:
+    src: templates/{{ item }}_beat_indices.j2
+    dest: "{{ curator_default_directory }}/{{ item }}_beat_indices.yml"
+    owner: "{{ curator_user }}"
+    group: "{{ curator_user }}"
+  with_items:
+    - close
+    - delete
+    - snapshot
+
+- name: install jobber as an alternative to cron
+  apt:
+    deb: https://github.com/dshearer/jobber/releases/download/v1.2/jobber_1.2-1_amd64.deb
+
+- name: add elastic sweep sync job to jobber
+  template:
+    src: templates/jobber.j2
+    dest: "{{ jobber_job_file_path }}"
+    owner: "{{ curator_user }}"
+    group: "{{ curator_user }}"
+    mode: "u=rwx,g=r,o="
+
+- name: add jobber error handler
+  template:
+    src: templates/jobber_error_handler.j2
+    dest: "{{ jobber_error_handler_file_path }}"
+    owner: "{{ curator_user }}"
+    group: "{{ curator_user }}"
+    mode: "u=rwx,g=r,o="
+
+- name: init jobber
+  shell: jobber reload
+  become: yes
+  become_user: "{{ curator_user }}"

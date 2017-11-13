@@ -1,0 +1,4 @@
+---
+galaxy_info:
+  author: cota
+  description: role to install elasticsearch snapshot tool, curator.py
